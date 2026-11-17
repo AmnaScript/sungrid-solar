@@ -14,9 +14,16 @@ const PORT = Number(process.env.PORT || 5000);
 app.disable("x-powered-by");
 app.use(helmet());
 
+
+const allowedOrigins = [
+    "http://localhost:5173",
+    process.env.FRONTEND_URL,
+].filter((origin): origin is string => Boolean(origin));
+
 app.use(cors({
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
 }));
+
 
 app.use(express.json({ limit: "10kb" }));
 

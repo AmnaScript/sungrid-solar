@@ -2,15 +2,24 @@
 import mysql from "mysql2/promise";
 import "dotenv/config";
 
+const useSSL = process.env.DB_SSL === "true";
+
 export const db = mysql.createPool({
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT || 3306),
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
+
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: 5,
     queueLimit: 0,
+
+    // TLS is required for TiDB Cloud.
+    // Certificate validation remains enabled.
+    ...(useSSL
+        ? { ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true } }
+        : {}),
 });
 
 export async function testDatabaseConnection() {
@@ -18,7 +27,7 @@ export async function testDatabaseConnection() {
 
     try {
         await connection.query("SELECT 1");
-        console.log("MySQL connected successfully!");
+        console.log("MySQL-compatible database connected!");
     } finally {
         connection.release();
     }
