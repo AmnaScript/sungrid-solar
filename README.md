@@ -1,16 +1,49 @@
-# SunGrid Solar — Staff Portal Auth & Order Data Foundation
 
-A staff-only solar installation order tracking application built with **React, TypeScript, Node.js, Express, MySQL, bcrypt, and JWT**.
+# SunGrid Solar — Staff Portal
 
-This repository covers the initial authentication and order-data foundation for SunGrid Solar. Staff accounts can sign in and access installation orders through a role-protected API. A simple React login page and orders list are part of the Task 1 brief and must be completed and verified before the task is submitted.
+A full-stack internal staff portal for managing solar installation
+orders securely.
 
-## Tech Stack
+Built as part of my Full Stack Development internship project at
+Ezitech.
 
-- **Frontend:** React + TypeScript (Vite), Axios
-- **Backend:** Node.js, Express, TypeScript
-- **Database:** MySQL 8, `mysql2/promise`
-- **Authentication:** bcrypt password hashing, JSON Web Tokens (JWT)
-- **Validation and protection:** Zod, Helmet, login rate limiting, CORS
+## Project Overview
+
+SunGrid Solar installs residential solar panels and needs a
+centralized system to manage installation orders.
+
+This application provides:
+
+- Secure staff authentication
+- Role-based access control
+- Protected order management
+- Order status updates without page reloads
+- MySQL audit logging for status changes
+- A responsive React dashboard
+
+## Technology Stack
+
+### Frontend
+- React
+- TypeScript
+- Vite
+- Axios
+- Lucide React
+- CSS
+
+### Backend
+- Node.js
+- Express.js
+- TypeScript
+- MySQL2
+- bcrypt
+- JSON Web Tokens (JWT)
+- Zod
+- Helmet
+- Express Rate Limit
+
+### Database
+- MySQL 8
 
 ## Project Structure
 
@@ -18,94 +51,323 @@ This repository covers the initial authentication and order-data foundation for 
 sungrid-solar/
 ├── backend/
 │   ├── database/
-│   │   └── schema.sql
+│   │   ├── schema.sql
+│   │   └── 002_order_logs.sql
 │   ├── src/
-│   │   ├── config/db.ts
-│   │   ├── middleware/auth.ts
-│   │   ├── routes/auth.ts
-│   │   ├── routes/orders.ts
-│   │   ├── scripts/bootstrapAdmin.ts
+│   │   ├── config/
+│   │   │   └── db.ts
+│   │   ├── middleware/
+│   │   │   └── auth.ts
+│   │   ├── routes/
+│   │   │   ├── auth.ts
+│   │   │   └── orders.ts
+│   │   ├── scripts/
+│   │   │   └── bootstrapAdmin.ts
 │   │   └── server.ts
-│   ├── package.json
-│   └── tsconfig.json
+│   └── package.json
 ├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   └── OrdersDashboard.tsx
+│   │   ├── pages/
+│   │   │   └── Login.tsx
+│   │   ├── services/
+│   │   │   └── api.ts
+│   │   ├── App.tsx
+│   │   └── App.css
+│   └── package.json
+├── .gitignore
 └── README.md
 ```
 
+## Features
+
+### 1. Staff Authentication
+
+The application uses JWT-based authentication.
+
+- Passwords are hashed using bcrypt.
+- Staff can log in using their registered credentials.
+- Login returns a signed JWT.
+- Invalid credentials return HTTP 401.
+- Protected orders routes require staff authorization.
+- Users without valid staff authorization receive HTTP 403.
+
+### 2. Role-Based Access Control
+
+Two user roles are supported:
+
+- admin
+- staff
+
+Administrators can register staff accounts through the
+protected registration endpoint.
+
+Only authenticated staff accounts can access and update
+installation orders.
+
+The backend verifies the user's current role against MySQL.
+
+### 3. Installation Orders Dashboard
+
+The React dashboard displays orders retrieved from the
+Express API.
+
+The table includes:
+
+- Order ID
+- Customer name
+- Installation address
+- Current status
+- Creation date
+
+The dashboard also displays:
+
+- Total orders
+- Active orders
+- Orders in progress
+
+### 4. Order Status Management
+
+Staff members can update installation order statuses.
+
+Supported statuses:
+
+- Scheduled
+- In Progress
+- Completed
+- Cancelled
+
+The dashboard sends a PATCH request to the backend.
+
+After a successful update, React updates the affected
+order in state without reloading the page.
+
+### 5. Audit Logging
+
+Every successful status change creates a record in the
+order_logs table.
+
+Each record includes:
+
+- id
+- order_id
+- user_id
+- old_status
+- new_status
+- changed_at
+
+The user ID is obtained from the verified authentication
+context, not from the request body.
+
+The order update and audit-log insertion run inside the
+same MySQL transaction.
+
+If either operation fails, the transaction is rolled back.
+
 ## Database Schema
 
-The `backend/database/schema.sql` file creates the `sungrid_solar` database and two tables:
+### users
 
-- **`users`**: `id`, `name`, `email`, `password_hash`, `role` (`staff` or `admin`). New user records default to `staff`.
-- **`orders`**: `id`, `customer_name`, `address`, `status`, `created_at`. MySQL automatically sets `created_at` using `CURRENT_TIMESTAMP`.
+| Column | Description |
+|--------|-------------|
+| id | Primary key |
+| name | Staff name |
+| email | Unique email address |
+| password_hash | Hashed password |
+| role | User role |
 
-The schema can be initialized in MySQL Workbench by opening and executing `backend/database/schema.sql` while connected as an administrator.
+### orders
+
+| Column | Description |
+|--------|-------------|
+| id | Primary key |
+| customer_name | Customer name |
+| address | Installation location |
+| status | Installation status |
+| created_at | Automatically generated timestamp |
+
+### order_logs
+
+| Column | Description |
+|--------|-------------|
+| id | Primary key |
+| order_id | Related installation order |
+| user_id | Staff member who changed the status |
+| old_status | Previous order status |
+| new_status | Updated order status |
+| changed_at | Automatic timestamp |
+
+Foreign keys connect order_logs to users and orders.
+
+## API Endpoints
+
+### Authentication
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | /api/register | Register staff (admin only) |
+| POST | /api/login | Authenticate user |
+| GET | /api/health | Check API status |
+
+### Orders
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /api/orders | Get orders (staff only) |
+| PATCH | /api/orders/:id/status | Update order status (staff only) |
+
+### Login Request
+
+POST /api/login
+
+```json
+{
+  "email": "staff@example.com",
+  "password": "your-password"
+}
+```
+
+Successful responses include a JWT and user information.
+
+### Update Order Status
+
+PATCH /api/orders/1/status
+
+Authorization header:
+
+```text
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+Request body:
+
+```json
+{
+  "status": "In Progress"
+}
+```
+
+The backend validates the new status, updates the database,
+and creates an audit-log record.
 
 ## Local Setup
 
 ### Prerequisites
 
-- Node.js and npm
-- MySQL Server 8 and MySQL Workbench (optional GUI)
+Install:
 
-### 1. Clone the repository
+- Node.js and npm
+- MySQL Server 8 or later
+- MySQL Workbench (recommended)
+- Git
+
+### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/sungrid-solar.git
+git clone https://github.com/AmnaScript/sungrid-solar.git
 cd sungrid-solar
 ```
 
-Replace `YOUR_USERNAME` with the GitHub repository owner.
+### 2. Initialize the Database
 
-### 2. Initialize MySQL
+Open MySQL Workbench and connect to your local server.
 
-Open `backend/database/schema.sql` in MySQL Workbench and execute the script. Create a separate application user with appropriate privileges rather than running the application as MySQL `root`:
+Execute the following files in order:
 
-```sql
-CREATE USER 'sungrid_app'@'localhost' IDENTIFIED BY 'REPLACE_WITH_A_STRONG_PASSWORD';
-GRANT SELECT, INSERT, UPDATE, DELETE ON sungrid_solar.* TO 'sungrid_app'@'localhost';
-```
+1. backend/database/schema.sql
+2. backend/database/002_order_logs.sql
 
-If the account already exists, use `ALTER USER ... IDENTIFIED BY ...` to change its password instead of repeating `CREATE USER`.
+The first file creates the main database and tables.
 
-### 3. Configure environment variables
+The second creates the audit-log table.
 
-Create `backend/.env` (do **not** commit it):
+Create a dedicated MySQL application user and grant it
+SELECT, INSERT, UPDATE, and DELETE permissions on the
+sungrid_solar database.
+
+Use the root account only for database administration.
+
+### 3. Configure Backend Environment Variables
+
+Create:
+
+backend/.env
+
+Example configuration:
 
 ```dotenv
 PORT=5000
+
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=sungrid_app
-DB_PASSWORD=YOUR_APP_DATABASE_PASSWORD
+DB_PASSWORD=your_database_password
 DB_NAME=sungrid_solar
-JWT_SECRET=YOUR_LONG_RANDOM_JWT_SECRET
+
+JWT_SECRET=replace_with_a_long_random_secret
+
 ADMIN_NAME=SunGrid Administrator
-ADMIN_EMAIL=admin@sungrid.example
-ADMIN_PASSWORD=YOUR_STRONG_INITIAL_ADMIN_PASSWORD
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=your_initial_admin_password
 ```
 
-Generate a random signing key with:
+Replace every placeholder with your own values.
 
-```bash
-node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
-```
+Do not commit your .env file.
 
-### 4. Install, build, and start the backend
+### 4. Start the Backend
 
 ```bash
 cd backend
 npm install
 npm run build
-npm run bootstrap:admin
 npm run dev
 ```
 
-The admin bootstrap runs only during initial setup. It creates the initial admin account if the configured email does not already exist. Remove `ADMIN_PASSWORD` from your environment after use. The API runs at `http://localhost:5000` by default.
+Expected server:
 
-Check `http://localhost:5000/api/health` to confirm the server is running.
+http://localhost:5000
 
-### 5. Start the frontend (once implemented)
+Health endpoint:
+
+http://localhost:5000/api/health
+
+### 5. Create the Initial Administrator
+
+For a new database, configure ADMIN_NAME, ADMIN_EMAIL,
+and ADMIN_PASSWORD in the backend environment.
+
+Run:
+
+```bash
+cd backend
+npm run bootstrap:admin
+```
+
+The script creates the initial administrator if the
+account does not already exist.
+
+After setup, remove ADMIN_PASSWORD from the environment.
+
+Use the authenticated administrator account to register
+staff through POST /api/register.
+
+### 6. Configure the Frontend
+
+Create:
+
+frontend/.env
+
+Add:
+
+```dotenv
+VITE_API_URL=http://localhost:5000/api
+```
+
+### 7. Start the Frontend
+
+Open another terminal:
 
 ```bash
 cd frontend
@@ -113,88 +375,197 @@ npm install
 npm run dev
 ```
 
-The local Vite frontend uses `http://localhost:5173`. Before submission, verify that the login form sends credentials to `/api/login`, stores the returned token in `localStorage` as specified by the brief, and fetches `/api/orders` with `Authorization: Bearer <token>`. Do not use real customer information in a demonstration.
+Open:
 
-## API Endpoints
+http://localhost:5173
 
-| Method | Route | Access | Successful result |
-| --- | --- | --- | --- |
-| GET | `/api/health` | Public health check | `200` and status JSON |
-| POST | `/api/login` | Valid staff/admin credentials | `200`, JWT and user info |
-| POST | `/api/register` | Admin JWT only | `201`, new staff user |
-| GET | `/api/orders` | Staff JWT only | `200`, JSON array of orders |
+Log in using your registered staff credentials.
 
-### Registration body
+## Reset the Database
 
-```json
-{
-  "name": "Test Staff",
-  "email": "staff@sungrid.example",
-  "password": "StaffTest2026!"
-}
+WARNING: Resetting the database permanently deletes
+local staff accounts, orders, and audit history.
+
+Only use these steps for disposable development data.
+
+1. Back up any important data.
+2. Stop the backend server.
+3. Open MySQL Workbench.
+4. Execute:
+
+```sql
+DROP DATABASE IF EXISTS sungrid_solar;
 ```
 
-The API assigns the `staff` role server-side. It does not accept a self-selected role.
+5. Run backend/database/schema.sql.
+6. Run backend/database/002_order_logs.sql.
+7. Verify the application's database-user permissions.
+8. Configure initial administrator credentials.
+9. Run npm run bootstrap:admin inside backend.
+10. Register staff accounts again.
+11. Restart the backend and frontend.
 
-### Login body
-
-```json
-{
-  "email": "staff@sungrid.example",
-  "password": "StaffTest2026!"
-}
-```
-
-A successful login returns a signed JWT in the `token` property. Incorrect existing-account credentials return `401`. Invalidly formatted request bodies return a validation error (`400`).
-
-### Request protected orders
-
-```http
-GET /api/orders
-Authorization: Bearer YOUR_STAFF_JWT
-```
-
-The response is an order array (`[]` if no orders exist). A missing, invalid, expired, or unauthorized token returns `403` as required by the task review criteria. An admin token does not qualify for the staff-only orders route.
+Never reset a production database using this procedure.
 
 ## Security Decisions
 
-### Why JWT instead of server-side sessions?
+### Why JWT Instead of Server Sessions?
 
-JWT enables the API to verify signed authentication claims without keeping a server-side session record for each browser. Each token has a two-hour expiration. A token is not treated as sufficient authorization on its own: the API also checks the user's current role in MySQL for every protected request. This means a signed token belonging to a user who no longer has the required role is rejected. This design does add a database query per protected request.
+JWT was selected because it supports stateless API
+authentication and works conveniently with the separated
+React frontend and Express backend.
 
-### Password protection
+The server signs tokens using a secret stored in environment
+variables.
 
-Passwords are hashed using bcrypt with a work factor of 12 before storage; plaintext passwords are never stored in the `users` table or included in login responses.
+JWTs expire after two hours.
 
-### Roles and authorization
+For protected routes, the backend verifies the token and
+checks the user's current role against MySQL.
 
-Only an authenticated `admin` can call `/api/register`. New accounts always receive the `staff` role assigned by the server/database, never a role supplied in the request body. The JWT includes the user's ID (subject) and role. The middleware verifies its signature, expiration, expected role, and the user's current role in MySQL. The `/api/orders` route is restricted specifically to `staff`.
+### Password Hashing
 
-### Input validation and SQL injection prevention
+Passwords are hashed with bcrypt before storage.
 
-Zod validates registration and login inputs, including required fields, valid email format, and minimum password length. MySQL queries use parameter placeholders (`?`) through `mysql2.execute()` rather than assembling SQL strings from user input. The API does not trust client-supplied user IDs or roles for authorization. Validation and parameterized queries are complementary controls: input validation alone does not prevent SQL injection.
+The backend never stores plain-text passwords.
 
-### API and configuration safeguards
+During login, bcrypt compares the submitted password with
+the stored hash.
 
-Helmet sets security-related HTTP headers, the login endpoint is rate-limited, CORS is restricted to the local development frontend, and JSON bodies have a size limit. Database credentials, JWT secrets, and initial administrator credentials are kept in `.env` and excluded from version control. The database connection uses a dedicated limited-privilege account.
+### Role-Based Authorization
 
-### Frontend token storage caveat
+Only authenticated staff members can access the orders API.
 
-The task brief explicitly requests saving the JWT in `localStorage`. This meets the trial's implementation instructions, but `localStorage` tokens can be accessed by injected JavaScript in an XSS attack. For a production deployment containing customer data, secure `HttpOnly`, `Secure`, `SameSite` cookies and a corresponding CSRF strategy should be evaluated.
+The registration endpoint is restricted to administrators.
 
-## Task 1 Verification Checklist
+New staff accounts receive their role from the backend,
+not from user-submitted input.
 
-Run the API locally and verify these **before submitting**:
+The backend obtains the user ID from the verified JWT
+and database lookup.
 
-- [ ] `POST /api/login` with correct staff credentials returns **200** and a JWT.
-- [ ] `POST /api/login` with incorrect credentials returns **401**.
-- [ ] `GET /api/orders` without valid staff authorization returns **403**.
-- [ ] `GET /api/orders` with valid staff authorization returns **200** and a JSON array.
-- [ ] React login works, saves the token, and displays fetched orders.
-- [ ] README contains a `Security Decisions` section.
-- [ ] Repository is **public** and contains at least **three meaningful Git commits**.
-- [ ] No `.env`, credentials, real customer data, or other secrets have been committed.
+### Input Validation
 
-## Task 2 / Task 3 (Not Part of This Submission)
+Zod validates incoming authentication and status-update
+requests.
 
-Task 2 adds order-status updates and an `order_logs` audit trail using MySQL transactions. Task 3 covers deployment, handover documentation, and a short demo recording. Those features should not be presented as complete during Task 1 submission.
+Invalid or missing values are rejected with appropriate
+error responses.
+
+### SQL Injection Prevention
+
+MySQL queries use parameterized statements through MySQL2.
+
+User-submitted values are passed as parameters instead of
+being concatenated into SQL strings.
+
+### Transaction Safety
+
+Order status updates and their corresponding audit logs
+are saved within a single database transaction.
+
+SELECT ... FOR UPDATE locks the selected order during
+the transaction to prevent conflicting writes.
+
+If either operation fails, both changes are rolled back.
+
+### Environment Security
+
+Database credentials and JWT secrets are stored in
+environment variables.
+
+Sensitive configuration files are excluded from Git.
+
+### Token Storage
+
+The frontend uses localStorage for JWT storage as specified
+in the internship project brief.
+
+A production version should evaluate secure HttpOnly
+cookies to reduce exposure to token theft through XSS.
+
+## Testing
+
+### Backend Checks
+
+```bash
+cd backend
+npm run build
+```
+
+### Frontend Checks
+
+```bash
+cd frontend
+npm run lint
+npm run build
+```
+
+### Manual Acceptance Tests
+
+1. Log in using valid staff credentials.
+2. Verify that the dashboard displays orders from MySQL.
+3. Select an order and change its status.
+4. Confirm the status updates without a page reload.
+5. Refresh the browser and check that the change persists.
+6. Verify the new status in the orders table.
+7. Verify a corresponding record exists in order_logs.
+8. Confirm the audit entry contains the staff user ID
+   and timestamp.
+9. Verify unauthorized API requests are rejected.
+10. Verify invalid status values are rejected.
+
+### Audit Log Verification
+
+Run in MySQL Workbench:
+
+```sql
+USE sungrid_solar;
+
+SELECT
+    l.id,
+    l.order_id,
+    l.user_id,
+    u.name AS staff_name,
+    l.old_status,
+    l.new_status,
+    l.changed_at
+FROM order_logs l
+JOIN users u ON u.id = l.user_id
+ORDER BY l.id DESC;
+```
+
+## Project Progress
+
+### Task 1 — Secure Staff Login & Database Setup
+- MySQL schema
+- JWT authentication
+- bcrypt password hashing
+- Protected orders API
+- React login and read-only orders dashboard
+
+### Task 2 — Protected Dashboard & Status Updates
+- Order status editing
+- PATCH endpoint
+- MySQL transactions
+- Staff audit logging
+- Local setup and database reset instructions
+
+### Task 3 — Deployment & Handover
+- Production deployment
+- Hosted environment configuration
+- Handover guide
+- Application demonstration
+
+Task 3 is planned for the next stage of the internship
+project.
+
+## Author
+
+Amna Sabahat
+
+Full Stack Development Intern — Ezitech
+
+GitHub: https://github.com/AmnaScript
+
+LinkedIn: https://www.linkedin.com/in/amnasabahat
