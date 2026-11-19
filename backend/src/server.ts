@@ -15,14 +15,20 @@ app.disable("x-powered-by");
 app.use(helmet());
 
 
+
 const allowedOrigins = [
-    "http://localhost:5173",
-    process.env.FRONTEND_URL,
+  "http://localhost:5173",
+  process.env.FRONTEND_URL?.replace(/\/$/, ""),
 ].filter((origin): origin is string => Boolean(origin));
 
-app.use(cors({
+app.use(
+  cors({
     origin: allowedOrigins,
-}));
+    methods: ["GET", "POST", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
 
 
 app.use(express.json({ limit: "10kb" }));
