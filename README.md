@@ -557,8 +557,101 @@ ORDER BY l.id DESC;
 - Handover guide
 - Application demonstration
 
-Task 3 is planned for the next stage of the internship
-project.
+
+## Handover Guide
+
+### Live Application
+
+- Frontend: https://sungrid-solar-bczf.vercel.app/
+- Backend API: https://sungrid-solar.vercel.app/
+- Health Check: https://sungrid-solar.vercel.app/api/health
+
+### Hosting
+
+- Frontend: Vercel (React + Vite)
+- Backend: Vercel (Node.js + Express)
+- Database: Filess.io (MySQL)
+
+### Adding New Staff Users
+
+1. Log in to POST /api/login with an administrator account.
+2. Copy the returned JWT token.
+3. Send POST /api/register with the administrator token
+   in the Authorization header.
+4. Provide the new staff member's name, email, and password.
+5. The backend automatically assigns the staff role.
+6. The new staff member can now log in to the portal.
+
+### Resetting the Database
+
+WARNING: Resetting the database deletes existing data.
+Always create a verified backup first.
+
+For development environments:
+
+1. Connect to MySQL using Workbench.
+2. Back up users, orders, and order_logs if needed.
+3. Remove the application tables in dependency order.
+4. Recreate them using:
+   - backend/database/schema.sql
+   - backend/database/002_order_logs.sql
+5. Adjust database names for the cloud provider.
+6. Bootstrap the administrator account again.
+7. Register staff accounts and restore approved data.
+
+Never reset production data without authorization.
+
+### Troubleshooting
+
+**Invalid login (401)**
+- Verify the email and password.
+- Confirm the account exists in the cloud database.
+- Check that passwords are stored as bcrypt hashes.
+
+**Access denied (403)**
+- Verify that the JWT is valid.
+- Confirm the account has the staff role.
+- Log in again if the token has expired.
+
+**CORS error**
+- Check FRONTEND_URL in the backend Vercel project.
+- Confirm it matches the deployed frontend origin.
+- Redeploy the backend after changing environment variables.
+
+**Database connection error**
+- Check DB_HOST, DB_PORT, DB_USER and DB_NAME.
+- Verify database credentials and TLS configuration.
+- Check Filess.io service availability and usage limits.
+
+### Deployment Environment Variables
+
+Backend:
+- NODE_ENV
+- DB_HOST
+- DB_PORT
+- DB_USER
+- DB_PASSWORD
+- DB_NAME
+- DB_SSL
+- JWT_SECRET
+- FRONTEND_URL
+
+Frontend:
+- VITE_API_URL
+
+All secrets must remain in the hosting environment,
+not in the public GitHub repository.
+
+### Demo Video
+
+[Watch the SunGrid Solar Demo](demo/sungrid-solar-demo.mp4)
+
+### Hosting Limitations
+
+This deployment uses free hosting intended for demonstration
+and evaluation. Storage, reliability, backups, resource limits,
+and security must be reviewed before using real customer data.
+
 
 ## Author
 
